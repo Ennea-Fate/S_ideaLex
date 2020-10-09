@@ -65,21 +65,36 @@ namespace Server
         public static WordList JoinWordLists(List<WordList> lwl)
         {
             WordList main = lwl[0];
-            for(int s = 1; s < lwl.Count - 1; s++)
+            Parallel.For(1, lwl.Count, i =>
             {
-                for(int j = 0; j < lwl[s].count; j++)
+                Parallel.For(0, lwl[i].count, j =>
                 {
                     int n;
-                  if ((n = main.IndexOf(lwl[s].words[j].word)) > 0)
+                    if ((n = main.IndexOf(lwl[i].words[j].word)) > 0)
                     {
-                        main.words[n].count += lwl[s].words[j].count;
+                        main.words[n].count += lwl[i].words[j].count;
                     }
-                  else
+                    else
                     {
-                        main.Add(lwl[s].words[j].word, lwl[s].words[j].count);
+                        main.Add(lwl[i].words[j].word, lwl[i].words[j].count);
                     }
-                }
-            }
+                });
+            });
+            //for(int s = 1; s < lwl.Count - 1; s++)
+            //{
+            //    for(int j = 0; j < lwl[s].count; j++)
+            //    {
+            //        int n;
+            //      if ((n = main.IndexOf(lwl[s].words[j].word)) > 0)
+            //        {
+            //            main.words[n].count += lwl[s].words[j].count;
+            //        }
+            //      else
+            //        {
+            //            main.Add(lwl[s].words[j].word, lwl[s].words[j].count);
+            //        }
+            //    }
+            //}
             return main;
         }
 
