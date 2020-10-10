@@ -34,16 +34,15 @@ namespace Server
             Text text = new Text("NVM RIGHT NOW!", tmpText);
             Console.WriteLine($"name = {text.name}\n");
             Console.WriteLine($"Text = \n {text.text}\n");
-            List<Text> textl = text.ParseToTextes();
+            List<Text> textl = text.ParseToParts(Environment.ProcessorCount);
             List<WordList> listWordList = new List<WordList>();
             for (int l = 0; l < Environment.ProcessorCount; l++)
             {
                 listWordList.Add(new WordList());
             }
             var startTime = System.Diagnostics.Stopwatch.StartNew();
-            var startTime2 = System.Diagnostics.Stopwatch.StartNew();
             Task[] taskArray = new Task[Environment.ProcessorCount];
-            for (int i = 0; i < Environment.ProcessorCount; i++)
+            for (int i = 0; i < textl.Count(); i++)
             {
                 parseParams pp = new parseParams(listWordList.ElementAt(i), textl.ElementAt(i));
                 taskArray[i] = new Task(() => Parse(pp));
@@ -51,12 +50,23 @@ namespace Server
             }
             Task.WaitAll(taskArray);
             //text.Parse(wl);
-            startTime2.Stop();
-            var resultTime = startTime2.Elapsed;
-            Console.WriteLine($"Result time to complete code 2: {resultTime}\n");
             WordList main = JoinWordLists(listWordList);
             //main.Sort();
-            //Console.WriteLine(main.Print());
+            Console.WriteLine(main.Print());
+            startTime.Stop();
+            var resultTime = startTime.Elapsed;
+            Console.WriteLine($"Result time to complete code: {resultTime}\n");
+            startTime = System.Diagnostics.Stopwatch.StartNew();
+            for (int j = 0; j < Environment.ProcessorCount; j++)
+            {
+                Concordance c = new Concordance();
+                c.text = textl[j];
+                c.size = 1;
+                c.words = new List<string>{ "степь", "хагана", "хвост"};
+                taskArray[j] = new Task(() => Conc(c));
+                taskArray[j].Start();
+            }
+            Task.WaitAll(taskArray);
             startTime.Stop();
             resultTime = startTime.Elapsed;
             Console.WriteLine($"Result time to complete code: {resultTime}\n");
@@ -105,6 +115,15 @@ namespace Server
             Text txt = pp.txt;
             WordList wl = pp.wl;
             txt.Parse(wl);
+            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} complete work\n");
+        }
+
+        public static void Conc(object x)
+        {
+            Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} begin work\n");
+            Concordance c = (Concordance)x;
+            c.Produce();
+            Console.WriteLine(c.result);
             Console.WriteLine($"Thread {Thread.CurrentThread.ManagedThreadId} complete work\n");
         }
 

@@ -14,6 +14,7 @@ namespace Server
     {
         public string name;
         public string text;
+        public List<Page> pages;
 
         public Text(string name, string text)
         {
@@ -21,24 +22,38 @@ namespace Server
            this.text = text;
         }
 
-        public List<Text> ParseToTextes()
+        public List<Page> ParseToPages()
+        {
+            MatchCollection mcol = Regex.Matches(this.text, @"(\/[А-Яа-я]+[0-9]+)");
+            string[] result = Regex.Split(this.text, @"\/[А-Яа-я]+[0-9]+", RegexOptions.IgnoreCase);
+            var numAnPages = result.Zip(mcol, (p, n) => new { Page = p, Number = n });
+            List<Page> pages = new List<Page>();
+            foreach(var nap in numAnPages)
+            {
+                Page page = new Page();
+                page.num = Convert.ToInt32(Regex.Match(nap.Number.Value, @"([1-9]+[0-9]*)").Value);
+                page.page = nap.Page;
+                pages.Add(page);
+            }
+            return pages;
+        }
+
+        public List<Text> ParseToParts(int partsCnt)
         {
             List<Text> textL = new List<Text>();
-            int coreCount = Environment.ProcessorCount;
-            int divider = Convert.ToInt32(Math.Round((double) (text.Length / coreCount)));
-            int pointbegin = 0;
-            int pointend = divider;
-            for (int i = 0; i < coreCount - 1; i++)
+            int divider = this.text.Length / partsCnt;
+            int lpoint = 0;
+            int backDiff = 0;
+            Regex regex = new Regex(@"(\/[А-Яа-я]+[0-9]+)");
+            for (int i = 0; i < partsCnt - 1; i++)
             {
-                while (!Char.IsWhiteSpace(text, pointend))
-                {
-                    pointend++;
-                }
-                textL.Add(new Text("part", text.Substring(pointbegin, pointend - pointbegin)));
-                pointbegin = pointend;
-                pointend = pointbegin + divider;
+                Match m = regex.Match(this.text, divider * (i + 1) - backDiff);
+                int length = m.Index - lpoint - 1;
+                textL.Add(new Text($"Часть текста {this.name} под номером {i + 1}", this.text.Substring(lpoint, length)));
+                lpoint = m.Index - 1;
+                backDiff = lpoint - (divider * (i + 1));
             }
-            textL.Add(new Text("part", text.Substring(pointbegin)));
+            textL.Add(new Text($"Часть текста {this.name} под номером {partsCnt}", this.text.Substring(lpoint)));
             return textL;
         }
 
