@@ -13,6 +13,12 @@ namespace Server
         public int size;
         public string result;
 
+        public Concordance()
+        {
+            text = new Text("", "");
+            words = new List<string>();
+        }
+
         public void Produce()
         {
             result = "";
@@ -24,17 +30,16 @@ namespace Server
 
             foreach (string word in words)
             {
-                result += $"{word}\n";
                 foreach (var page in this.text.pages)
                 {
                     foreach(var sentence in page.sentences)
                     {
-                        if(sentence.sentence.Contains(word))
+                        if(sentence.sentence.Contains(" " + word + " "))
                         {
                             result += $"Страница {page.num}, предложение {sentence.num}:\n";
                             for (int i = -this.size; i <= this.size; i++)
                             {
-                                if((page.cnt > (sentence.num + i)) && ((sentence.num + 1) > 0))
+                                if((page.cnt > (sentence.num + i)) && ((sentence.num + i) > 0))
                                 {
                                     result += $"{page.sentences.ElementAt(sentence.num + i).sentence}";
                                 }
@@ -44,7 +49,6 @@ namespace Server
                     }
                 }
             }
-
         }
     }
 

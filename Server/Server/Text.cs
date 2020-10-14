@@ -7,6 +7,8 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Drawing;
+using System.Globalization;
+using System.Runtime.Serialization.Formatters;
 
 namespace Server
 {
@@ -22,42 +24,63 @@ namespace Server
            this.text = text;
         }
 
-        public List<Page> ParseToPages()
+        public List<Page> ParseToPages(bool save_codes = false)
         {
             MatchCollection mcol = Regex.Matches(this.text, @"(\/[А-Яа-я]+[0-9]+)");
-            string[] result = Regex.Split(this.text, @"\/[А-Яа-я]+[0-9]+", RegexOptions.IgnoreCase);
+            string[] result = Regex.Split(this.text, @"\/[А-Яа-я]+[0-9]+", RegexOptions.IgnoreCase).Where(str => !String.IsNullOrEmpty(str)).ToArray();
             var numAnPages = result.Zip(mcol, (p, n) => new { Page = p, Number = n });
             List<Page> pages = new List<Page>();
             foreach(var nap in numAnPages)
             {
                 Page page = new Page();
                 page.num = Convert.ToInt32(Regex.Match(nap.Number.Value, @"([1-9]+[0-9]*)").Value);
-                page.page = nap.Page;
+                if (save_codes)
+                    page.page = nap.Number.Value + "\n" + nap.Page;
+                else
+                    page.page = nap.Page;
                 pages.Add(page);
             }
             return pages;
         }
 
-        public List<Text> ParseToParts(int partsCnt)
+        public void CutByPages(int from, int to)
         {
-            List<Text> textL = new List<Text>();
-            int divider = this.text.Length / partsCnt;
-            int lpoint = 0;
-            int backDiff = 0;
-            Regex regex = new Regex(@"(\/[А-Яа-я]+[0-9]+)");
-            for (int i = 0; i < partsCnt - 1; i++)
-            {
-                Match m = regex.Match(this.text, divider * (i + 1) - backDiff);
-                int length = m.Index - lpoint - 1;
-                textL.Add(new Text($"Часть текста {this.name} под номером {i + 1}", this.text.Substring(lpoint, length)));
-                lpoint = m.Index - 1;
-                backDiff = lpoint - (divider * (i + 1));
-            }
-            textL.Add(new Text($"Часть текста {this.name} под номером {partsCnt}", this.text.Substring(lpoint)));
-            return textL;
+            Match m1 = Regex.Match(this.text, @$"(\/[А-Яа-я]+[0]*{from})");
+            Match m2 = Regex.Match(this.text, @$"(\/[А-Яа-я]+[0]*{to + 1})");
+            if (!m2.Success)
+                return;
+            else
+                this.text = this.text.Substring(m1.Index - 1, m2.Index - 1);
         }
 
-        public void Parse(WordList wl)
+        public Text[] ParseToParts(int partsCnt)
+        {
+            this.pages = this.ParseToPages(true);
+            //Text[] textes = new Text[partsCnt];
+            int partLenght = (int) Math.Ceiling(this.pages.Count / (double)partsCnt);
+            if (partLenght <= 0)
+                partLenght = 1;
+            Text[] textes = new Text[partsCnt];
+            for (int i = 0; i < partsCnt; i++)
+            {
+                textes[i] = new Text($"Часть №{i + 1} произведения {this.name}", "");
+            }
+            int counter = 0;
+            foreach (Page p in this.pages)
+            {
+                textes[counter / partLenght].text += p.page;
+                counter++;
+            }
+            //var pages = Enumerable.Range(0, partsCnt)
+            //    .Select(i => this.pages.Skip(i * partLenght).Take(partLenght));
+            //for (int i = 0; i < pages.Count(); i++)
+            //{
+            //    for (int j = 0; j < page)
+            //}
+            return textes;
+        }
+
+        public void ParseToWords(WordList wl)
         {
             Match m;
             string HRefPatter = @"([[^\wА-Яа-я\'\-]+)";
@@ -95,7 +118,7 @@ namespace Server
         }
         public int IndexOf(string cword)
         {
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < words.Count; i++)
             {
                 if((words.ElementAt(i).word.CompareTo(cword)) == 0)
                 {
@@ -107,7 +130,7 @@ namespace Server
 
         public void Sort()
         {
-            this.words.Sort((obj1, obj2) => obj1.count.CompareTo(obj2.count));
+            this.words.Sort((obj1, obj2) => obj2.CompareTo(obj1));
         }
 
         public void Add(string word, int count = 0)
@@ -135,6 +158,7 @@ namespace Server
     {
         public string word;
         public int count;
+        public string morph;
 
         public Word(string word, int count)
         {
